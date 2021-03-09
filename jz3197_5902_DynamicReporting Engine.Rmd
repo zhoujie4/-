@@ -1,0 +1,271 @@
+---
+title: "Mobile Phone Survey"
+output: flexdashboard::flex_dashboard
+runtime: shiny
+---
+
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(rmarkdown)
+library(knitr)
+library(Hmisc)
+library(DT)
+library(dplyr)
+
+library(data.table)
+assignInNamespace("cedta.override", c(data.table:::cedta.override,"rmarkdown"), "data.table")
+
+
+opts_chunk$set(echo = FALSE, comment="", warning = FALSE, message = FALSE, tidy.opts=list(width.cutoff=55), tidy = TRUE)
+
+```
+
+```{r source_functions}
+source("constants.R")
+source("functions.R")
+```
+
+```{r read_data}
+data <- fread("mobile phone survey data.csv")
+```
+
+```{r constants}
+data[Age>=18&Age<35,"Age Group":="18-35"]
+data[Age>=35&Age<50,"Age Group":="35-50"]
+data[Age>=50&Age<65,"Age Group":="50-65"]
+data[Age>=65,"Age Group":="65+"]
+age.group.name <- "Age Group"
+
+data[Income<50000,"Income Group":="<$50,000"]
+data[Income>=50000&Income<75000,"Income Group":="$50,000-75,000"]
+data[Income>=75000&Income<100000,"Income Group":="$75,000-100,000"]
+data[Income>=100000&Income<150000,"Income Group":="$100,000-150,000"]
+data[Income>=150000,"Income Group":=">$150,000"]
+income.group.name <- "Income Group"
+
+data[, eval(satisfaction.name) := get(satisfaction.name) / 10]
+```
+
+
+```{r functions}
+
+
+```
+
+
+
+```{r define variables}
+
+unique.age.groups <- data[, sort(unique(get(age.group.name)))]
+unique.genders <- data[, sort(unique(get(gender.name)))]
+unique.income.groups <- data[, sort(unique(get(income.group.name)))]
+unique.regions <- data[, sort(unique(get(region.name)))]
+unique.personas <- data[, sort(unique(get(persona.name)))]
+unique.products <- data[, unique(get(product.name))]
+
+respondent.variables <- c(age.group.name, gender.name, income.group.name, region.name, persona.name)
+states.of.engagement <- c(awareness.name, consideration.name, consumption.name, satisfaction.name, advocacy.name)
+bp.traits <- names(data)[grep(pattern = bp.pattern, x = names(data))]
+
+binary_outcome <- c(awareness.name, consideration.name, consumption.name,advocacy.name)
+
+Aggregated.Engagement <- "Aggregated.Engagement"
+Brand.Perception <- "Brand.Perception"
+
+data[,17:20] <- 10-data[,17:20]
+data[,Brand.Perception:=rowMeans(.SD,na.rm = T),.SDcols=names(data[,9:20])]
+
+```
+
+
+Introduction
+=====================================  
+
+We are analyzing data from a Marketing survey covering 20 different mobile phones.  
+
+The survey was given to 10,000 respondents and covered 20 separate products.
+
+Click on the tabs to see various reports.
+
+
+Q1
+===================================
+
+
+Row {data-height=500}
+-------------------------------------
+
+```{r q1_input}
+inputPanel(
+  selectInput(inputId="respondent_variable", label = "Select Variable:", choices = respondent.variables, selected = respondent.variables[1]),
+  checkboxInput(inputId = "q1_show_percentages", label = "Show Percentage", value = T)
+)
+#input <- list(respondent_variable = respondent.variables[1],q1_show_percentages = TRUE)
+```
+
+Row {data-height=500}
+-------------------------------------
+
+```{r q1_output}
+renderPlot({
+  tab <- percentage.table(x = data[get(product.name) == get(product.name)[1], get(input$respondent_variable)])
+  barplot(height = tab, space=0.01, main = input$respondent_variable, ylab = "Percentage",  xlab = input$respondent_variable,ylim = c(0, 1.2*max(tab, na.rm = T)), col = "steelblue")
+
+  if(input$q1_show_percentages == T){
+    space_val = 0
+    text(x = -0.4 + 1:length(tab) * (1+space_val), y = tab, labels = sprintf("%.1f%%", tab), pos = 3)
+  }
+})
+```
+
+Q2
+=====================================  
+
+
+Row {data-height=500}
+-------------------------------------
+
+```{r q2_input}
+inputPanel(
+  selectInput(inputId = "q2_engagement_state", label = "Select State of Engagement:", choices = states.of.engagement, selected = states.of.engagement[1]),
+  selectInput(inputId = "q2_other_variables",label="Select Other Variables:",choices=respondent.variables,selected = respondent.variables,multiple=T),
+  selectInput(inputId="q2_age_group", label = "Age", choices = unique.age.groups, selected = unique.age.groups, multiple = T),
+  selectInput(inputId = "q2_gender", label = "Gender", choices = unique.genders, selected = unique.genders, multiple = T),
+  selectInput(inputId = "q2_income_group", label = "Income Group", choices = unique.income.groups, selected = unique.income.groups, multiple = T),
+  selectInput(inputId = "q2_region", label = "Region", choices = unique.regions, selected = unique.regions, multiple = T),
+  selectInput(inputId = "q2_persona", label = "Persona", choices = unique.personas, selected = unique.personas, multiple = T),
+  sliderInput(inputId = "q2_min_threshold", label = "Number of Top Products:", min = 1, max = 20, value = 5, step = 1)
+)
+#input <- list(q2_engagement_state = states.of.engagement[3], q2_min_threshold = 5,q2_product = unique.products, q2_other_variables = respondent.variables, q2_age_group = unique.age.groups, q2_gender = unique.genders, q2_income_group = unique.income.groups, q2_region = unique.regions, q2_persona = unique.personas)
+```
+
+Row {data-height=500}
+-------------------------------------
+
+```{r q2_output}
+renderPlot({
+  data_q2 <- data[get(age.group.name) %in% input$q2_age_group & get(gender.name) %in% input$q2_gender & get(income.group.name) %in% input$q2_income_group & get(region.name) %in% input$q2_region & get(persona.name) %in% input$q2_persona]
+  output_q2 <- data_q2[, .(Score = round.numerics(100*mean(get(input$q2_engagement_state),na.rm=T)/max(get(input$q2_engagement_state), na.rm = T),2)), by = product.name][order(-Score),.SD[1:input$q2_min_threshold]]
+  ggplot(output_q2,aes(reorder(get(product.name),-Score),Score,label = Score))+geom_bar(stat = "identity",fill="#f68060")+theme(axis.text.x = element_text(angle = 45, hjust = 1))+xlab("Product")+ylab(sprintf("Rate of %s", input$q2_engagement_state))+geom_text(aes(label = paste0(Score,"%")),vjust = -0.5, size = 3)
+})
+
+
+```
+
+
+Question 3
+=====================================  
+
+Row {data-height=500}
+-------------------------------------
+
+```{r q3_input}
+inputPanel(
+  selectInput(inputId = "q3_other_variables",label="Select Variables:",choices=respondent.variables,selected = respondent.variables,multiple=T),
+  selectInput(inputId="q3_age_group", label = "Age", choices = unique.age.groups, selected = unique.age.groups, multiple = T),
+  selectInput(inputId = "q3_gender", label = "Gender", choices = unique.genders, selected = unique.genders, multiple = T),
+  selectInput(inputId = "q3_income_group", label = "Income Group", choices = unique.income.groups, selected = unique.income.groups, multiple = T),
+  selectInput(inputId = "q3_region", label = "Region", choices = unique.regions, selected = unique.regions, multiple = T),
+  selectInput(inputId = "q3_persona", label = "Persona", choices = unique.personas, selected = unique.personas, multiple = T),
+  sliderInput(inputId = "q3_min_threshold", label = "Number of Top Products:", min = 1, max = 20, value = 5, step = 1)
+)
+
+#input <- list(q3_min_threshold = 5,q3_product = unique.products, q3_other_variables = respondent.variables, q3_age_group = unique.age.groups, q3_gender = unique.genders, q3_income_group = unique.income.groups, q3_region = unique.regions, q3_persona = unique.personas)
+```
+
+Row {data-height=500}
+-------------------------------------
+
+```{r q3_output}
+renderPlot({
+  data_q3 <- data[get(age.group.name) %in% input$q3_age_group & get(gender.name) %in% input$q3_gender & get(income.group.name) %in% input$q3_income_group & get(region.name) %in% input$q3_region & get(persona.name) %in% input$q3_persona]
+  perception <- data_q3[, .SD, by = product.name,.SDcols=bp.traits]
+  q3_pos_perception <- perception[,lapply(.SD,function(x)mean(x,na.rm = T)),keyby=product.name,.SDcols=names(perception[,2:9])]
+  q3_neg_perception <- perception[,lapply(.SD,function(x)mean(x,na.rm = T)),keyby=product.name,.SDcols=names(perception[,10:13])]
+  q3_neg_perception[,2:5] <- 10-q3_neg_perception[,2:5]
+  q3_overall_perception <- merge(q3_pos_perception,q3_neg_perception)
+  q3 <- q3_overall_perception[,.("Overall Average Perception"=round.numerics(rowMeans(.SD),4)),keyby=product.name][order(-`Overall Average Perception`),.SD[1:input$q3_min_threshold]]
+  ggplot(q3,aes(reorder(Product,-`Overall Average Perception`),`Overall Average Perception`))+geom_bar(stat = "identity",fill="indianred1")+theme(axis.text.x = element_text(angle = 45, hjust = 1))+xlab("Product")+geom_text(aes(label =`Overall Average Perception`),vjust=-0.5)
+})
+  
+```
+
+Question 4
+=====================================  
+
+Row {data-height=500}
+-------------------------------------
+
+```{r q4_input}
+inputPanel(
+  selectInput(inputId ="first_outcome",label = "First Outcome:", choices = states.of.engagement, selected = states.of.engagement[1]),
+  selectInput(inputId ="second_outcome",label = "Second Outcome:", choices = states.of.engagement, selected = states.of.engagement[2]),
+  sliderInput(inputId = "q4_number_top", label = "Number of Top Products:", min = 1, max = 20, value = 5, step = 1),
+  checkboxInput(inputId = "q4_show_percentages", label = "Display Percentages:", value = T),
+  sliderInput(inputId = "q4_number_digits", label = "Digits:", min = 1, max = 5, value = 1, step = 1)
+)
+
+#input <- list(q4_number_top = 5,q4_show_percentages=T,first_outcome = states.of.engagement[1], second_outcome = states.of.engagement[3],q4_number_digits=1 )
+```
+
+Row {data-height=500}
+-------------------------------------
+
+```{r q4_output}
+renderPlot({
+  first_outcome <- data[,.(percentage_first=mean(get(input$first_outcome),na.rm = T)),by=product.name]
+  second_outcome <- data[,.(percentage_second=mean(get(input$second_outcome),na.rm = T)),by=product.name]
+  
+  aggregated <-merge(first_outcome,second_outcome)[,.(Product, Difference=round.numerics(100*abs(percentage_first- percentage_second),input$q4_number_digits))][order(-Difference),.SD[1:input$q4_number_top]]
+  plot_q4 <- ggplot(aggregated,aes(reorder(Product,-Difference),Difference,label=Difference))+geom_bar(stat = "identity",fill="green")+theme(axis.text.x = element_text(angle = 45, hjust = 1))+xlab("Product")+ylab(sprintf("Difference Between %s and %s",input$first_outcome,input$second_outcome))
+  
+  if(input$q4_show_percentages == T){
+    plot_q4 +geom_text(aes(label = paste0(Difference,"%")),vjust=-0.3)
+  }
+  
+})
+```
+
+Question 5
+=====================================  
+
+Row {data-height=500}
+-------------------------------------
+
+
+```{r q5_input}
+
+inputPanel(
+  selectInput(inputId="q5_product", label = "Select Products:", choices = unique.products, selected = c(unique.products[1],unique.products[1]), multiple = TRUE),
+  selectInput(inputId="q5_state", label = "State of Engagement:", choices = states.of.engagement, selected = states.of.engagement[2]),
+  selectInput(inputId="q5_other_variables", label = "Choose Other Variables:", choices = c(respondent.variables, bp.traits, Aggregated.Engagement), selected = c(age.group.name, gender.name, region.name,Aggregated.Engagement), multiple = TRUE)
+)
+#input = list(q5_state = states.of.engagement[1], q5_product = c(unique.products[1],unique.products[2]), q5_other_variables = c(age.group.name, gender.name, region.name, income.group.name, Aggregated.Engagement,bp.traits))
+```
+
+Row {data-height=500}
+-------------------------------------
+
+```{r q5_output}
+renderDataTable({
+  data_q5 <- data
+  data_q5[is.na(data_q5)] <- 0
+  if(input$q5_state == satisfaction.name){
+    model.type <- "linear"
+  }
+  if (input$q5_state != satisfaction.name){
+    model.type <- "logistic"
+  }
+
+  aggregated_engagement <- data_q5[!(get(product.name) %in% input$q5_product) ,.(Aggregated.Engagement=ifelse(sum(get(input$q5_state),na.rm = T)==0, 0, mean(get(input$q5_state),na.rm = T))),by="id"]
+  model_data <- merge(data_q5,aggregated_engagement)[get(product.name) %in% input$q5_product]
+
+  
+  model <- fit.model(dt =model_data, outcome.name = input$q5_state, input.names = input$q5_other_variables, model.type = model.type)
+  datatable(data = model)
+  
+})
+```
+

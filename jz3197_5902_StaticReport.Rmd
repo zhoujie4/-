@@ -1,0 +1,262 @@
+---
+title: "Individual Project 3"
+author: "Jie Zhou"
+date: ""
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, comment="", warning = FALSE, message = FALSE, tidy.opts=list(width.cutoff=55), tidy = TRUE)
+```
+
+```{r source}
+#source("constants.R")
+#source("functions.R")
+library(data.table)
+library(DT)
+library(ggplot2)
+library(dplyr)
+```
+
+```{r constants}
+```
+
+```{r functions}
+
+```
+
+```{r read_data}
+data=fread("mobile phone survey data.csv")
+```
+
+
+# Report {.tabset}
+
+## Part 1:  Summary
+
+
+```{r part1}
+head(data)
+cbind("Number of Products"=length(unique(data$Product)),"Number of respondents"=length(unique(data$id)))
+```
+
+This dataset contains 10,000 survey respondents, 20 products asked, and 3 various types of information, including
+      
+      "Demographic information" of survey respondents:
+                 age, gender, income, region, persona, and the specific product they purchased,
+                 
+      "Product engagement" of respondents:  
+                whether aware of the product , whether considering buying the product, whether they consume the 
+                product, the satisfaction level (0-10), and whether advocating the product, 
+                
+      and "Product/brand perception" of respondents:
+       user friendliness, fast, battery life, camera, sleek, stylish, status symbol, screen size, boring, bulky, 
+       fragile,and expensive. Their ratings about products are stored in the range of 0 (bad)-10 (good).
+       
+To do the further analysis, consultants are able to divide data into various segments based on the demographic information, like region and persona, and determine which product has the best performance by various types of ratings, the significant relationship between respondents' demographic information and their ratings, and how many respondents who are aware of this product have not purchased.
+
+
+## Part 2:  Specific Questions {.tabset}
+
+
+### Q1: Resopendent Variables {.tabset}
+
+#### Age Group
+
+```{r q1_age.group}
+data[Age>=18&Age<35,age_group:="18-35"]
+data[Age>=35&Age<50,age_group:="35-50"]
+data[Age>=50&Age<65,age_group:="50-65"]
+data[Age>=65,age_group:="65+"]
+
+unique_age_group <- unique(data[,age_group,by="id"])
+datatable(unique_age_group[,.("Percentage of Respondents"=paste0(100*.N/nrow(unique_age_group),"%")),keyby="age_group"])
+```
+
+#### Gender
+
+```{r q1_gender}
+unique_gender <- unique(data[,Gender,by="id"])
+datatable(unique_gender[,.("Percentage of Respondents"=paste0(100*.N/nrow(unique_gender),"%")),keyby="Gender"])
+```
+
+#### Income Group
+
+```{r q1_income.group}
+#define income group
+data[Income<50000,"Income Group":="<$50,000"]
+data[Income>=50000&Income<75000,"Income Group":="$50,000-75,000"]
+data[Income>=75000&Income<100000,"Income Group":="$75,000-100,000"]
+data[Income>=100000&Income<150000,"Income Group":="$100,000-150,000"]
+data[Income>=150000,"Income Group":=">$150,000"]
+
+unique_income_group <- unique(data[,`Income Group`,keyby="id"])
+order=c("<$50,000","$50,000-75,000","$75,000-100,000","$100,000-150,000",">$150,000")
+q1_income.group <- unique_income_group[,.("Percentage of Respondents"=paste0(100*.N/nrow(unique_income_group),"%")),keyby=`Income Group`]
+datatable(q1_income.group)
+```
+
+#### Region
+ 
+```{r region}
+unique_region <- unique(data[,Region,keyby="id"])
+datatable(unique_region[,.("Percentage of Respondents"=paste0(100*.N/nrow(unique_region),"%")),keyby="Region"])
+```
+
+#### Persona
+
+```{r persona}
+unique_persona <- unique(data[,Persona,keyby="id"])
+datatable(unique_persona[,.("Percentage of Respondents"=paste0(100*.N/nrow(unique_persona),"%")),keyby="Persona"])
+```
+
+
+### Q2:  Segmented Outcomes {.tabset}
+
+#### Part A
+
+What are the top 5 products by Awareness rates in the Northeast?
+
+```{r q2_a}
+datatable(data[Region=="Northeast",.("Awareness Score"=paste(round(100*sum(Awareness)/.N,2),"%")),keyby="Product"][order(-`Awareness Score`),.SD[1:5]])
+
+```
+
+#### Part B
+
+What are the top 5 products by Advocacy rates among females who earn at least $100,000?
+
+```{r q2_b}
+
+data[Income>=100000&Gender=="Female",.("Advocacy Score" = round(100*mean(Advocacy, na.rm=T)/max(Advocacy, na.rm = T),2)), by = "Product"][order(-`Advocacy Score`),.SD[1:5]]
+
+```
+
+
+
+
+
+### Q3:  Overall Brand Perceptions {.tabset}
+
+What are the top 5 brands by the overall average perception?
+
+
+```{r q3}
+q3 <- data[,c(7,9:20)]
+
+
+q3_positive_perception <- q3[,lapply(.SD,function(x)mean(x,na.rm = T)),keyby="Product",.SDcols=names(q3[,2:9])]# scores for postive perceptions
+
+q3_negative_perception <- q3[,lapply(.SD,function(x)mean(x,na.rm = T)),keyby="Product",.SDcols=names(q3[,10:13])]# scores for negative perceptions
+q3_negative_perception[,2:5] <- 10-q3_negative_perception[,2:5] # invert negative perception
+
+q3_perception_aggregate <- merge(q3_positive_perception,q3_negative_perception)
+
+datatable(q3_perception_aggregate[,.("Overall Average Perception"=round(rowMeans(.SD),4)),keyby="Product"][order(-`Overall Average Perception`),.SD[1:5]])
+```
+
+
+### Q4: Gaps in Outcomes {.tabset}
+
+
+#### Part A
+
+Which 5 products have the largest gap between the rate of consumption and the rate of awareness?
+
+```{r q4_a}
+
+aware_rate <- data[,.("Rate of Awareness"=mean(Awareness)),keyby="Product"]
+
+consum_rate <-data[,.("Rate of Consumption"=mean(Consumption,na.rm=T)),keyby="Product"]
+
+q4_a <- merge(aware_rate,consum_rate)
+
+top_5_a <- q4_a[,.(Product,"Gap between Awareness and Consumption"=round(100*abs(`Rate of Consumption`-`Rate of Awareness`),2))][order(-`Gap between Awareness and Consumption`),.SD[1:5]]
+
+ggplot(top_5_a,aes(reorder(Product,-`Gap between Awareness and Consumption`),`Gap between Awareness and Consumption`,label =`Gap between Awareness and Consumption`))+geom_bar(stat="identity",fill="#f68060")+xlab("Product")+ylab("Difference between Awareness and Consumption (%)")+geom_text(aes(label =paste0(`Gap between Awareness and Consumption`,"%")),vjust=-0.5)
+
+```
+
+#### Part B
+
+Which 5 products have the largest gap between the rate of Awareness and the average Satisfaction?
+
+```{r q4_b}
+satis_rate <- data[,.(`Average Satisfaction`=mean(Satisfaction,na.rm = T)),keyby="Product"]
+q4_b <- merge(aware_rate,satis_rate)
+
+q4_b[,.(Product,"Gap between Awareness and Satisfaction"=round(abs(100*`Rate of Awareness`-10*`Average Satisfaction`),2))][order(-`Gap between Awareness and Satisfaction`),.SD[1:5]]%>%
+   ggplot(aes(reorder(Product,-`Gap between Awareness and Satisfaction`),`Gap between Awareness and Satisfaction`,label =`Gap between Awareness and Satisfaction`))+geom_bar(stat="identity",fill="blue")+xlab("Product")+ylab("Difference between Awareness and Satisfaction (%)")+geom_text(aes(label =`Gap between Awareness and Satisfaction`),vjust=-0.5)
+```
+
+
+### Q5: Aggregated Engagement {.tabset}
+
+#### Part A
+
+How much impact does respondent's overall trends in awareness have for that person's awareness with Buzzdial phones?
+
+```{r q5_a}
+aggregated_engagement <- data[Product!="Buzzdial",.(aggregated_engagement=ifelse(sum(Awareness,na.rm = T)==0, 0, mean(Awareness,na.rm = T))),by="id"]
+
+q5_a <-merge(data,aggregated_engagement)[Product=="Buzzdial"]
+model_q5_a<- glm(Awareness~age_group+Gender+`Income Group`+aggregated_engagement+Region+Persona,q5_a,family=binomial)
+
+#aggregate table 
+datatable(cbind(round(exp(cbind("Odds ratio" = model_q5_a$coefficients, confint(model_q5_a, level = 0.95))),4),"P values"=round(coef(summary(model_q5_a))[,'Pr(>|z|)'],4)))
+
+```
+
+#### Part B
+
+How much impact does respondent's overall trends in satisfaction have for that person's satisfaction with Buzzdial phones?
+
+```{r q5_b}
+# calculate aggregated engagement of satisfaction
+aggregated_satisfaction <- data[Product!="Buzzdial",.(aggregated_engagement=ifelse(sum(Satisfaction,na.rm = T)==0, 0, mean(Satisfaction,na.rm = T)/10)),by="id"]
+# merge data
+q5_b <-merge(data,aggregated_satisfaction)[Product=="Buzzdial"]
+# build model
+model_q5_b <- lm(Awareness~age_group+Gender+`Income Group`+aggregated_engagement+Region+Persona,q5_b)
+
+
+table_b <- cbind("Coefficients"=round(model_q5_b$coefficients,4), round(confint(model_q5_b,level = 0.95),4),"P values"=round(coef(summary(model_q5_b))[,4],4))
+DT::datatable(table_b)
+
+```
+
+
+
+## Part 3:  Reporting Engine {.tabset}
+
+This section of the work is available in the file ...
+
+## Part 4:  Opportunities {.tabset}
+
+### Q1
+
+How would you build on the reporting capabilities that you have created?  What would you design next?
+
+Based on the dashboard I created, the marketing team is able to analyze the data and obtain business sights by themselves without the intervention of technical knowledge. The collaborative dashboard allows the user to filter the data and dig into one specfic target group. And this dashboard enables the delivery of critical information to multiple users at the same time so as to improve efficiency of overall work process.
+Next, I will communicate with the marketing team to collect the feedback and determine whether any extra question needs to be added to the dashboard. In addition, I will find out ways to make my dashboard clear and straightforward to the users.
+
+### Q2
+
+What are some opportunities to learn valuable information and inform strategic decisions?  List a number of questions that you might explore.
+
+1. Which product has the best brand perceptions;
+2. Whether the demographic information of respondents have a significant relationship with the engagement scores;
+3. Which product has the highest consideration and the lowest consumption;
+4. Compare the consumption and advocacy of products to define which ones are satisfying. Customers would be satisfied with one product if he/she purchased and recommended it to others.
+
+### Q3
+
+How would you approach other decisionmakers within the client's organization to assess their priorities and help them better utilize the available information?
+
+To assess their priorities, I will collect their concerns and build a matrix that correlates the impact and feasibility of these concerns. I will first deal with those with high feasibility and impact.
+To help them better utilize the available information, I would not only use their feedbacks to improve my analytic work and better serve their needs but also find ways to tune the models and accurately identfy which are the most important factors.
+
+### Q4
+
+**Video Submission:**  Make a 2-minute pitch to the client with a proposal for the next phase of work.  Include in your request a budget, a time frame, and staffing levels.  Explain why this proposal would be valuable for the client and worth the investment in your consulting services.  Please submit this answer as a short video recording. You may use any video recording program you feel comfortable with. The only requirements are that you are visible and audible in the video.  You may also submit a file of slides if that is part of your pitch.
