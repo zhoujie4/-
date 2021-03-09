@@ -1,5 +1,5 @@
 ---
-title: "Individual Project 3"
+title: "Marketing survey project"
 author: "Jie Zhou"
 date: ""
 output: rmarkdown::github_document
