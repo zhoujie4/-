@@ -2,7 +2,7 @@
 title: "Individual Project 3"
 author: "Jie Zhou"
 date: ""
-output: html_document
+output: rmarkdown::github_document
 ---
 
 
