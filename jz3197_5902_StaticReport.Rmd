@@ -226,37 +226,3 @@ DT::datatable(table_b)
 
 ```
 
-
-
-## Part 3:  Reporting Engine {.tabset}
-
-This section of the work is available in the file ...
-
-## Part 4:  Opportunities {.tabset}
-
-### Q1
-
-How would you build on the reporting capabilities that you have created?  What would you design next?
-
-Based on the dashboard I created, the marketing team is able to analyze the data and obtain business sights by themselves without the intervention of technical knowledge. The collaborative dashboard allows the user to filter the data and dig into one specfic target group. And this dashboard enables the delivery of critical information to multiple users at the same time so as to improve efficiency of overall work process.
-Next, I will communicate with the marketing team to collect the feedback and determine whether any extra question needs to be added to the dashboard. In addition, I will find out ways to make my dashboard clear and straightforward to the users.
-
-### Q2
-
-What are some opportunities to learn valuable information and inform strategic decisions?  List a number of questions that you might explore.
-
-1. Which product has the best brand perceptions;
-2. Whether the demographic information of respondents have a significant relationship with the engagement scores;
-3. Which product has the highest consideration and the lowest consumption;
-4. Compare the consumption and advocacy of products to define which ones are satisfying. Customers would be satisfied with one product if he/she purchased and recommended it to others.
-
-### Q3
-
-How would you approach other decisionmakers within the client's organization to assess their priorities and help them better utilize the available information?
-
-To assess their priorities, I will collect their concerns and build a matrix that correlates the impact and feasibility of these concerns. I will first deal with those with high feasibility and impact.
-To help them better utilize the available information, I would not only use their feedbacks to improve my analytic work and better serve their needs but also find ways to tune the models and accurately identfy which are the most important factors.
-
-### Q4
-
-**Video Submission:**  Make a 2-minute pitch to the client with a proposal for the next phase of work.  Include in your request a budget, a time frame, and staffing levels.  Explain why this proposal would be valuable for the client and worth the investment in your consulting services.  Please submit this answer as a short video recording. You may use any video recording program you feel comfortable with. The only requirements are that you are visible and audible in the video.  You may also submit a file of slides if that is part of your pitch.
