@@ -57,10 +57,10 @@ This dataset contains 10,000 survey respondents, 20 products asked, and 3 variou
 To do the further analysis, consultants are able to divide data into various segments based on the demographic information, like region and persona, and determine which product has the best performance by various types of ratings, the significant relationship between respondents' demographic information and their ratings, and how many respondents who are aware of this product have not purchased.
 
 
-## Part 2:  Specific Questions {.tabset}
+## {.tabset}
 
 
-### Q1: Resopendent Variables {.tabset}
+### 1: Resopendent Variables {.tabset}
 
 #### Age Group
 
@@ -114,20 +114,20 @@ datatable(unique_persona[,.("Percentage of Respondents"=paste0(100*.N/nrow(uniqu
 
 ### Q2:  Segmented Outcomes {.tabset}
 
-#### Part A
+
 
 What are the top 5 products by Awareness rates in the Northeast?
 
-```{r q2_a}
+```{r 2_a}
 datatable(data[Region=="Northeast",.("Awareness Score"=paste(round(100*sum(Awareness)/.N,2),"%")),keyby="Product"][order(-`Awareness Score`),.SD[1:5]])
 
 ```
 
-#### Part B
+
 
 What are the top 5 products by Advocacy rates among females who earn at least $100,000?
 
-```{r q2_b}
+```{r 2_b}
 
 data[Income>=100000&Gender=="Female",.("Advocacy Score" = round(100*mean(Advocacy, na.rm=T)/max(Advocacy, na.rm = T),2)), by = "Product"][order(-`Advocacy Score`),.SD[1:5]]
 
@@ -137,12 +137,12 @@ data[Income>=100000&Gender=="Female",.("Advocacy Score" = round(100*mean(Advocac
 
 
 
-### Q3:  Overall Brand Perceptions {.tabset}
+### 3:  Overall Brand Perceptions {.tabset}
 
 What are the top 5 brands by the overall average perception?
 
 
-```{r q3}
+```{r 3}
 q3 <- data[,c(7,9:20)]
 
 
@@ -157,14 +157,13 @@ datatable(q3_perception_aggregate[,.("Overall Average Perception"=round(rowMeans
 ```
 
 
-### Q4: Gaps in Outcomes {.tabset}
+### 4: Gaps in Outcomes {.tabset}
 
 
-#### Part A
 
 Which 5 products have the largest gap between the rate of consumption and the rate of awareness?
 
-```{r q4_a}
+```{r 4_a}
 
 aware_rate <- data[,.("Rate of Awareness"=mean(Awareness)),keyby="Product"]
 
@@ -178,7 +177,6 @@ ggplot(top_5_a,aes(reorder(Product,-`Gap between Awareness and Consumption`),`Ga
 
 ```
 
-#### Part B
 
 Which 5 products have the largest gap between the rate of Awareness and the average Satisfaction?
 
@@ -197,7 +195,7 @@ q4_b[,.(Product,"Gap between Awareness and Satisfaction"=round(abs(100*`Rate of 
 
 How much impact does respondent's overall trends in awareness have for that person's awareness with Buzzdial phones?
 
-```{r q5_a}
+```{r 5_a}
 aggregated_engagement <- data[Product!="Buzzdial",.(aggregated_engagement=ifelse(sum(Awareness,na.rm = T)==0, 0, mean(Awareness,na.rm = T))),by="id"]
 
 q5_a <-merge(data,aggregated_engagement)[Product=="Buzzdial"]
@@ -212,7 +210,7 @@ datatable(cbind(round(exp(cbind("Odds ratio" = model_q5_a$coefficients, confint(
 
 How much impact does respondent's overall trends in satisfaction have for that person's satisfaction with Buzzdial phones?
 
-```{r q5_b}
+```{r 5_b}
 # calculate aggregated engagement of satisfaction
 aggregated_satisfaction <- data[Product!="Buzzdial",.(aggregated_engagement=ifelse(sum(Satisfaction,na.rm = T)==0, 0, mean(Satisfaction,na.rm = T)/10)),by="id"]
 # merge data
